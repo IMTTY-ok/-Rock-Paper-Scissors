@@ -1,0 +1,8 @@
+# Keep line endings as authored (LF) across platforms.
+# The terminal game draws box-drawing characters, so mixed endings would
+# introduce stray carriage returns into the rendered output.
+* text=auto eol=lf
+
+*.py text eol=lf
+*.html text eol=lf
+*.md text eol=lf
