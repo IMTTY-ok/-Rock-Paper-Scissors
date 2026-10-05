@@ -169,6 +169,10 @@ def _pad(text, width, align="left"):
         left = gap // 2
         return " " * left + text + " " * (gap - left)
     return text + " " * gap
+
+
+def _nearest_256(r, g, b):
+    """Map a 24-bit colour onto the xterm-256 palette index."""
     if r == g == b:
         greys = (
             0, 8, 18, 28, 38, 49, 59, 69, 79, 89, 99,
@@ -371,7 +375,6 @@ def boot(screen):
             time.sleep(0.05 + random.random() * 0.04)
         screen.line()
 
-    width = screen.width - 6
     def progress(step):
         screen.write("\r" + screen.paint("  [", fg=MUTED) + screen.paint("loading", fg=MUTED))
         screen.write(screen.paint(BAR_FULL * step, fg=NEON_CYAN))
@@ -530,7 +533,7 @@ def verdict(screen, outcome, player_move, bot_move):
         height = len(rows) + 2
         for offset in (2, -2, 1, -1, 0):
             sys.stdout.write("\x1b[%dA" % height)
-            sys.stdout.write("\r" + " " * offset if offset > 0 else "\r")
+            screen.write("\r" if offset <= 0 else "\x1b[%dC" % offset)
             screen.frame(rows, color=color, fill=CARD)
             sys.stdout.flush()
             time.sleep(0.05)
@@ -541,12 +544,18 @@ def verdict(screen, outcome, player_move, bot_move):
     screen.line()
 
 
-def report(screen, state, target):
+def report(screen, state, target, aborted=False):
     rounds = state["rounds"] or 1
     rate = state["player"] / rounds * 100
     won = state["player"] > state["computer"]
 
-    rows = big_text("MATCH OVER" if state["rounds"] else "NO ROUNDS")
+    if aborted:
+        headline = "ABORTED"
+    elif state["rounds"]:
+        headline = "MATCH OVER"
+    else:
+        headline = "NO ROUNDS"
+    rows = big_text(headline)
     width = screen.width - 4
     rows = [
         _pad(screen.paint(r, fg=ACCENT if won else SECONDARY, bold=True), width, "center")
@@ -631,17 +640,17 @@ def play_match(screen, state, target):
 
         player = read_choice(screen)
         if player is None:
-            return history
+            return history, True
 
         bot = random.choice(ORDER)
         duel(screen, player, bot)
 
         if player == bot:
-            outcome, colour = "tie", MUTED
+            outcome = "tie"
         elif BEATS[player] == bot:
-            outcome, colour = "win", NEON_GREEN
+            outcome = "win"
         else:
-            outcome, colour = "lose", DESTRUCTIVE
+            outcome = "lose"
 
         verdict(screen, outcome, player, bot)
 
@@ -659,7 +668,7 @@ def play_match(screen, state, target):
         history.append({"win": "W", "lose": "L", "tie": "T"}[outcome])
 
         if target and max(state["player"], state["computer"]) >= target:
-            return history
+            return history, False
         screen.sleep(0.5)
 
 
@@ -699,10 +708,10 @@ def main():
             screen.line()
             target = read_target(screen)
 
-            history = play_match(screen, state, target)
+            history, aborted = play_match(screen, state, target)
             if history:
                 history_strip(screen, history)
-            report(screen, state, target)
+            report(screen, state, target, aborted=aborted)
             if not ask_rematch(screen):
                 break
             state = {"player": 0, "computer": 0, "rounds": 0, "streak": 0, "best": 0, "last": "rock"}

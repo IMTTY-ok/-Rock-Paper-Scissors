@@ -1,7 +1,8 @@
 # Rock Paper Scissors
 
 A rock-paper-scissors game with two front ends sharing one look: a neon cyberpunk
-terminal UI and a single-file browser version. No dependencies, no build step.
+terminal UI and a single-file browser version. No dependencies, no build step, no
+backend, no environment variables.
 
 ```
 ✊  ✋  ✌    ROCK PAPER SCISSORS
@@ -17,8 +18,10 @@ python rock_paper_scissors.py
 
 ### Browser
 
+The browser game is a single self-contained `index.html` at the repository root,
+so serve the repository root:
+
 ```bash
-cd web
 python -m http.server 8000
 ```
 
@@ -76,9 +79,23 @@ output are enabled at startup when needed.
 ## Layout
 
 ```
+index.html               Browser game (self-contained, at the root on purpose)
 rock_paper_scissors.py   Terminal game
-web/index.html           Browser game (self-contained)
 ```
+
+`index.html` sits at the repository root so that static hosts, including Vercel,
+serve it at `/` with no extra configuration.
+
+## Deploying to Vercel
+
+The repository is a static site: no build step, no dependencies, no backend.
+
+| Setting | Value |
+| --- | --- |
+| Framework Preset | Other |
+| Root Directory | `/` (repository root) |
+| Build Command | leave empty |
+| Output Directory | leave empty (Vercel serves the root) |
 
 ## License
 
